@@ -371,6 +371,51 @@
                 return e.returnValue;
             }
         });
+        
+            // Tab/window change detection and warning popup
+            let tabWarningShown = false;
+            function showTabWarning() {
+                if (!tabWarningShown) {
+                    tabWarningShown = true;
+                    const warningDiv = document.createElement('div');
+                    warningDiv.id = 'tabWarning';
+                    warningDiv.style.position = 'fixed';
+                    warningDiv.style.top = '0';
+                    warningDiv.style.left = '0';
+                    warningDiv.style.width = '100%';
+                    warningDiv.style.background = 'var(--error, #d9534f)';
+                    warningDiv.style.color = '#fff';
+                    warningDiv.style.padding = '1rem';
+                    warningDiv.style.textAlign = 'center';
+                    warningDiv.style.zIndex = '9999';
+                    warningDiv.style.fontSize = '1.2rem';
+                    warningDiv.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Warning: You left the exam screen! Please stay on this page.';
+                    document.body.appendChild(warningDiv);
+                    setTimeout(() => {
+                        warningDiv.remove();
+                        tabWarningShown = false;
+                    }, 5000);
+                }
+            }
+
+            function sendScreenActivity(eventMsg) {
+                fetch('/screen_activity', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({event: eventMsg})
+                });
+            }
+
+            document.addEventListener('visibilitychange', function() {
+                if (document.visibilityState === 'hidden') {
+                    showTabWarning();
+                    sendScreenActivity('You have left the exam screen!');
+                }
+            });
+            window.addEventListener('blur', function() {
+                showTabWarning();
+                sendScreenActivity('You have left the exam screen!');
+            });
     });
 </script>
 
