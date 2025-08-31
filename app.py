@@ -218,7 +218,7 @@ try:
 except Exception as e:
     import traceback
     print('Error initializing BehaviorMonitor at startup:', traceback.format_exc())
-frame_queue = queue.Queue(maxsize=10)
+frame_queue = queue.Queue(maxsize=30)  # Increased for smoother streaming
 audio_alert = False
 registered_face_embedding = None
 
@@ -362,14 +362,16 @@ def process_frame(user=None, role=None):
                             if behavior_results.get('suspicious_object_detected'):
                                 METRICS[user]['suspicious_object_detected'] = True
                 # --- Always update the video feed for smoothness ---
-                if not frame_queue.full():
-                    frame_queue.put(frame)
-                # If queue is full, skip adding new frames (drop this frame)
-                time.sleep(0.07)  # Increased sleep for less CPU usage
+                try:
+                    frame_queue.put(frame, timeout=0.01)  # Drop frame if queue is full
+                except queue.Full:
+                    pass  # Don't block, just drop frame
+                # Reduce sleep for smoother feed
+                time.sleep(0.01)
             else:
-                time.sleep(0.07)
+                time.sleep(0.01)
         else:
-            time.sleep(0.07)
+            time.sleep(0.01)
 
 def generate_frames():
     while True:
@@ -380,7 +382,7 @@ def generate_frames():
             yield (b'--frame\r\n'
                    b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
         else:
-            time.sleep(0.05)
+            time.sleep(0.01)
 
 def monitor_audio(user=None, role=None, threshold=0.02, duration=1, samplerate=16000):
     global audio_alert
