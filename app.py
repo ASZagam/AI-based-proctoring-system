@@ -40,10 +40,10 @@ from src.auth.face_auth import FaceAuthenticator
 from src.monitoring.behavior_monitor import BehaviorMonitor
 from src.utils.camera import Camera
 import cv2
-import threading
+import threadinggit
 import queue
 import time
-import sounddevice as sd
+#import sounddevice as sd
 import numpy as np
 import sqlite3
 import os
@@ -384,25 +384,25 @@ def generate_frames():
         else:
             time.sleep(0.01)
 
-def monitor_audio(user=None, role=None, threshold=0.02, duration=1, samplerate=16000):
-    global audio_alert
-    import time
-    while True:
-        # Only run audio proctoring for students and when proctoring is active
-        if role == 'admin' or not PROCTORING_ACTIVE.get(user, False):
-            sd.sleep(int(duration * 1000))
-            continue
-        def callback(indata, frames, _time, status):
-            volume_norm = np.linalg.norm(indata) / frames
-            if user in METRICS:
-                METRICS[user].setdefault('noise_samples', []).append(volume_norm)
-            if volume_norm > threshold:
-                ALERTS.append({"type": "audio", "time": time.time()})
-                audio_alert = True
-                if increment_violation(user or 'unknown', 'audio'):
-                    add_alert(user or 'unknown', 'audio')
-        with sd.InputStream(callback=callback, channels=1, samplerate=samplerate):
-            sd.sleep(int(duration * 1000))
+# def monitor_audio(user=None, role=None, threshold=0.02, duration=1, samplerate=16000):
+#     global audio_alert
+#     import time
+#     while True:
+#         # Only run audio proctoring for students and when proctoring is active
+#         if role == 'admin' or not PROCTORING_ACTIVE.get(user, False):
+#             sd.sleep(int(duration * 1000))
+#             continue
+#         def callback(indata, frames, _time, status):
+#             volume_norm = np.linalg.norm(indata) / frames
+#             if user in METRICS:
+#                 METRICS[user].setdefault('noise_samples', []).append(volume_norm)
+#             if volume_norm > threshold:
+#                 ALERTS.append({"type": "audio", "time": time.time()})
+#                 audio_alert = True
+#                 if increment_violation(user or 'unknown', 'audio'):
+#                     add_alert(user or 'unknown', 'audio')
+#         with sd.InputStream(callback=callback, channels=1, samplerate=samplerate):
+#             sd.sleep(int(duration * 1000))
 
 @app.route('/')
 def index():
@@ -671,9 +671,9 @@ def start_exam():
         processing_thread.daemon = True
         processing_thread.start()
 
-        audio_thread = threading.Thread(target=monitor_audio, args=(user, role))
-        audio_thread.daemon = True
-        audio_thread.start()
+        # audio_thread = threading.Thread(target=monitor_audio, args=(user, role))
+        # audio_thread.daemon = True
+        # audio_thread.start()
 
         # Redirect to exam_questions page
         return jsonify({"status": "success", "redirect": url_for('exam_questions')})
@@ -748,7 +748,8 @@ def exam_questions():
         multiple_faces_detected = metrics.get('multiple_faces_detected', 0)
         # Noise level (convert norm to dB scale for display, but keep as norm for scoring)
         noise_samples = metrics.get('noise_samples', [])
-        noise_level = float(np.mean(noise_samples)) if noise_samples else 0.0
+        noise_level = 0.0
+        # float(np.mean(noise_samples)) if noise_samples else 0.0
         # Tab switches
         tab_switch_count = metrics.get('tab_switch_count', 0)
         # Phone detected
