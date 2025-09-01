@@ -5,7 +5,7 @@ from insightface.app import FaceAnalysis
 from numpy.linalg import norm
 from src.utils.image_utils import resize_frame  # ensure this resizes frame to given width
 from ultralytics import YOLO  # Add YOLO for heavy phone detection
-from src.monitoring.audio_monitor import AudioMonitor  # Import AudioMonitor
+# from src.monitoring.audio_monitor import AudioMonitor  # Import AudioMonitor
 
 class BehaviorMonitor:
     def __init__(self, registered_embedding, frame_skip=3, identity_threshold=0.45):
