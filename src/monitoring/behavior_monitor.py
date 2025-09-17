@@ -8,7 +8,7 @@ from ultralytics import YOLO  # Add YOLO for heavy phone detection
 from src.monitoring.audio_monitor import AudioMonitor  # Import AudioMonitor
 
 class BehaviorMonitor:
-    def __init__(self, registered_embedding, frame_skip=3, identity_threshold=0.45):
+    def __init__(self, registered_embedding, frame_skip=5, identity_threshold=0.45):
         self.face_verifier = FaceAnalysis()
         self.face_verifier.prepare(ctx_id=-1)  # Use -1 if you don’t have GPU
         self.frame_count = 0
@@ -76,8 +76,8 @@ class BehaviorMonitor:
         pose_results = self.pose.process(rgb_frame)
         if pose_results.pose_landmarks:
             results["phone_detected"] = self._check_phone_usage(pose_results.pose_landmarks)
-        # Heavy check: YOLO phone detection every 15 frames
-        if self.frame_count % 15 == 0:
+        # Heavy check: YOLO phone detection every 30 frames
+        if self.frame_count % 30 == 0:
             if self.detect_phone_yolo(frame):
                 results["phone_detected"] = True
         # Audio check: noise/talking detection

@@ -265,6 +265,11 @@
             <span>Please allow camera access for face verification</span>
         </div>
 
+        <div id="cameraError" style="display:none; color:#f44336; margin-bottom:1rem; font-weight:500;">
+            <i class="fas fa-exclamation-circle"></i> Camera access failed. Please enable camera permissions and click Retry.
+            <button id="retryCamera" style="margin-left:1rem; padding:0.3rem 1rem; background:#1976f2; color:#fff; border:none; border-radius:4px; cursor:pointer;">Retry</button>
+        </div>
+
         <form id="loginForm" method="post">
             <div class="form-group">
                 <label for="username">Username</label>
@@ -297,103 +302,6 @@
         </div>
     </div>
 
-    <script>
-        const video = document.getElementById('video');
-        const canvas = document.getElementById('canvas');
-        const loginForm = document.getElementById('loginForm');
-        const faceImageInput = document.getElementById('face_image');
-        const roleSelect = document.getElementById('roleSelect');
-        const buttonText = document.getElementById('buttonText');
-        const cameraPermission = document.getElementById('cameraPermission');
-        const loginButton = document.getElementById('loginButton');
-
-        // Initialize camera state
-        let cameraStream = null;
-        let cameraAccessGranted = false;
-
-        // Update UI based on role selection
-        function updateUIForRole() {
-            if (roleSelect.value === 'admin') {
-                video.style.display = 'none';
-                canvas.style.display = 'none';
-                cameraPermission.style.display = 'none';
-                buttonText.textContent = 'Login as Admin';
-                loginButton.innerHTML = '<i class="fas fa-user-shield"></i><span id="buttonText">Login as Admin</span>';
-            } else {
-                video.style.display = 'block';
-                canvas.style.display = 'none';
-                buttonText.textContent = 'Login with Face Verification';
-                loginButton.innerHTML = '<i class="fas fa-sign-in-alt"></i><span id="buttonText">Login with Face Verification</span>';
-                if (!cameraAccessGranted) {
-                    cameraPermission.style.display = 'flex';
-                }
-            }
-        }
-
-        // Request camera access
-        async function initCamera() {
-            try {
-                cameraStream = await navigator.mediaDevices.getUserMedia({ 
-                    video: { 
-                        width: { ideal: 640 }, 
-                        height: { ideal: 480 },
-                        facingMode: 'user' 
-                    } 
-                });
-                video.srcObject = cameraStream;
-                cameraAccessGranted = true;
-                cameraPermission.style.display = 'none';
-            } catch (err) {
-                console.error('Camera access error:', err);
-                cameraPermission.style.display = 'flex';
-                cameraPermission.innerHTML = `
-                    <i class="fas fa-camera-slash"></i>
-                    <span>Camera access required for face verification</span>
-                `;
-            }
-        }
-
-        // Handle form submission
-        loginForm.addEventListener('submit', async function (e) {
-            e.preventDefault();
-            
-            if (roleSelect.value === 'admin') {
-                // No face image for admin
-                faceImageInput.value = '';
-                loginForm.submit();
-                return;
-            }
-
-            if (!cameraStream) {
-                alert('Please allow camera access to continue with face verification.');
-                return;
-            }
-
-            // Show loading state
-            loginButton.disabled = true;
-            loginButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Verifying Face...';
-
-            // Capture face image
-            canvas.width = video.videoWidth;
-            canvas.height = video.videoHeight;
-            canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
-            faceImageInput.value = canvas.toDataURL('image/jpeg', 0.8);
-            
-            // Submit form
-            loginForm.submit();
-        });
-
-        // Clean up camera stream when leaving page
-        window.addEventListener('beforeunload', () => {
-            if (cameraStream) {
-                cameraStream.getTracks().forEach(track => track.stop());
-            }
-        });
-
-        // Initialize
-        roleSelect.addEventListener('change', updateUIForRole);
-        updateUIForRole();
-        initCamera();
-    </script>
+    <script src="{{ url_for('static', filename='login.js') }}"></script>
 </body>
 </html>

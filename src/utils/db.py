@@ -1,3 +1,16 @@
+def create_default_admin():
+    """
+    Create a default admin user if not present. Username: admin, Password: admin123, Role: admin
+    """
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    c.execute('SELECT * FROM users WHERE username = ? AND role = ?', ('admin', 'admin'))
+    if not c.fetchone():
+        password_hash = generate_password_hash('admin123')
+        c.execute('INSERT INTO users (username, password_hash, role) VALUES (?, ?, ?)',
+                  ('admin', password_hash, 'admin'))
+        conn.commit()
+    conn.close()
 import sqlite3
 from werkzeug.security import generate_password_hash, check_password_hash
 from src.auth.face_auth import FaceAuthenticator

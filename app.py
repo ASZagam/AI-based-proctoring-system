@@ -35,7 +35,7 @@ def calculate_integrity_score(
         risk = "High Risk"
     return score, risk
 from flask import Flask, render_template, Response, jsonify, request, redirect, url_for, session, flash
-from src.utils.db import add_user_with_embedding, get_face_embedding
+from src.utils.db import add_user_with_embedding, get_face_embedding, create_default_admin, init_db
 from src.auth.face_auth import FaceAuthenticator
 from src.monitoring.behavior_monitor import BehaviorMonitor
 from src.utils.camera import Camera
@@ -62,6 +62,9 @@ from werkzeug.security import generate_password_hash
 
 logging.basicConfig(level=logging.INFO)
 
+init_db()
+# Ensure default admin exists
+create_default_admin()
 app = Flask(__name__)
 # Use environment variable for secret key
 app.secret_key = os.environ.get("EXAMGUARD_SECRET_KEY", "unsafe_default_secret_key")
@@ -272,26 +275,54 @@ def reset_violations(user=None):
 def initialize_system(registered_embedding=None):
     global camera, registered_face_embedding, behavior_monitor
     try:
-        if camera is None:
-            camera = Camera()
+        print('[DEBUG] Entered initialize_system')
+        try:
+            if camera is None:
+                print('[DEBUG] Camera is None, initializing Camera()')
+                camera = Camera()
+            else:
+                print('[DEBUG] Camera already initialized')
+        except Exception as cam_exc:
+            return jsonify({"status": "error", "message": f"Camera initialization failed: {cam_exc}"}), 500
+
         # Fast camera warm-up: try to get a valid frame up to 3 times, fail fast
         frame = None
-        for _ in range(3):
-            frame = camera.get_frame()
+        for i in range(3):
+            try:
+                frame = camera.get_frame()
+                print(f'[DEBUG] Camera get_frame attempt {i+1}: {"Success" if frame is not None else "None"}')
+            except Exception as frame_exc:
+                import traceback
+                print('[ERROR] Camera get_frame failed:', traceback.format_exc())
+                return jsonify({"status": "error", "message": f"Camera get_frame failed: {frame_exc}"}), 500
             if frame is not None:
                 break
             time.sleep(0.05)
         if frame is None:
-            # Camera could not be accessed or no frames available
+            print('[ERROR] Camera could not be accessed or no frames available')
             return jsonify({"status": "error", "message": "Camera access denied or not available. Please check your webcam connection and permissions."}), 500
+
         # Set embedding for this session (do NOT reload models)
         if registered_embedding is not None:
-            registered_face_embedding = registered_embedding
-            # Update embedding in behavior_monitor if method exists
-            if hasattr(behavior_monitor, 'set_registered_embedding'):
-                behavior_monitor.set_registered_embedding(registered_embedding)
-            elif hasattr(behavior_monitor, 'registered_embedding'):
-                behavior_monitor.registered_embedding = registered_embedding
+            try:
+                print(f'[DEBUG] Setting registered_face_embedding, shape: {getattr(registered_embedding, "shape", None)}')
+                registered_face_embedding = registered_embedding
+                # Update embedding in behavior_monitor if method exists
+                if hasattr(behavior_monitor, 'set_registered_embedding'):
+                    print('[DEBUG] behavior_monitor has set_registered_embedding')
+                    behavior_monitor.set_registered_embedding(registered_embedding)
+                elif hasattr(behavior_monitor, 'registered_embedding'):
+                    print('[DEBUG] behavior_monitor has registered_embedding attribute')
+                    behavior_monitor.registered_embedding = registered_embedding
+                else:
+                    print('[DEBUG] behavior_monitor does not have embedding setter')
+            except Exception as embed_exc:
+                import traceback
+                print('[ERROR] Setting embedding in behavior_monitor failed:', traceback.format_exc())
+                return jsonify({"status": "error", "message": f"Setting embedding failed: {embed_exc}"}), 500
+        else:
+            print('[DEBUG] No registered_embedding provided to initialize_system')
+        print('[DEBUG] initialize_system completed successfully')
     except Exception as e:
         import traceback
         print('Error in initialize_system:', traceback.format_exc())
@@ -647,14 +678,29 @@ def start_exam():
             return jsonify({"status": "unauthorized"}), 401
 
         stored_embedding = get_face_embedding(username)
+        print(f"[DEBUG] Username: {username}")
+        print(f"[DEBUG] Stored embedding type: {type(stored_embedding)}")
+        if stored_embedding is not None:
+            if isinstance(stored_embedding, (bytes, bytearray)):
+                print(f"[DEBUG] Stored embedding (first 20 bytes): {stored_embedding[:20]}")
+            else:
+                print(f"[DEBUG] Stored embedding value: {stored_embedding}")
+        else:
+            print("[DEBUG] No embedding found for user.")
         if stored_embedding is None:
             return jsonify({"status": "no_embedding"}), 400
 
         # Convert to numpy array if stored as binary
-        if isinstance(stored_embedding, (bytes, bytearray)):
-            registered_embedding = np.frombuffer(stored_embedding, dtype=np.float32)
-        else:
-            registered_embedding = stored_embedding
+        try:
+            if isinstance(stored_embedding, (bytes, bytearray)):
+                registered_embedding = np.frombuffer(stored_embedding, dtype=np.float32)
+                print(f"[DEBUG] Registered embedding shape: {registered_embedding.shape}, dtype: {registered_embedding.dtype}")
+            else:
+                registered_embedding = stored_embedding
+        except Exception as embed_exc:
+            import traceback
+            print('Error converting embedding:', traceback.format_exc())
+            return jsonify({"status": "error", "message": f"Embedding conversion failed: {embed_exc}"}), 500
 
         init_result = initialize_system(registered_embedding)
         if init_result is not None:

@@ -1,9 +1,0 @@
-flask
-numpy
-opencv-python
-mediapipe
-insightface
-ultralytics
-sounddevice
-werkzeug
-pillow

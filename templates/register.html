@@ -230,6 +230,10 @@
 </head>
 <body>
     <div class="register-container">
+        <div id="cameraError" style="display:none; color:#f44336; margin-bottom:1rem; font-weight:500;">
+            <i class="fas fa-exclamation-circle"></i> Camera access failed. Please enable camera permissions and click Retry.
+            <button id="retryCamera" style="margin-left:1rem; padding:0.3rem 1rem; background:#1976f2; color:#fff; border:none; border-radius:4px; cursor:pointer;">Retry</button>
+        </div>
         <h2>Create Your Account</h2>
         
         {% if error %}
@@ -284,72 +288,6 @@
         </div>
     </div>
 
-    <script>
-        const video = document.getElementById('video');
-        const canvas = document.getElementById('canvas');
-        const registerForm = document.getElementById('registerForm');
-        const faceImageInput = document.getElementById('face_image');
-    // No admin registration, so no role selection or admin code
-        const confirmationMsg = document.getElementById('confirmationMsg');
-        const registerButton = document.getElementById('registerButton');
-
-        // Initialize camera
-        let cameraStream = null;
-
-        async function initCamera() {
-            try {
-                cameraStream = await navigator.mediaDevices.getUserMedia({ 
-                    video: { 
-                        width: { ideal: 640 }, 
-                        height: { ideal: 480 },
-                        facingMode: 'user' 
-                    } 
-                });
-                video.srcObject = cameraStream;
-            } catch (err) {
-                console.error('Camera access error:', err);
-                alert('Camera access is required for face registration. Please enable camera permissions.');
-            }
-        }
-
-        // Handle form submission
-        registerForm.addEventListener('submit', async function(e) {
-            e.preventDefault();
-            
-            // Only student registration allowed
-
-            // Show loading state
-            registerButton.disabled = true;
-            registerButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
-
-            // Capture face image
-            canvas.width = video.videoWidth;
-            canvas.height = video.videoHeight;
-            canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
-            faceImageInput.value = canvas.toDataURL('image/jpeg', 0.8);
-            
-            // Submit form
-            this.submit();
-
-            // Show confirmation (will be replaced by server response)
-            setTimeout(() => {
-                confirmationMsg.style.display = 'flex';
-                registerButton.disabled = false;
-                registerButton.innerHTML = '<i class="fas fa-user-plus"></i> Register Account';
-            }, 500);
-        });
-
-    // No role selection or admin code for registration
-
-        // Clean up camera stream when leaving page
-        window.addEventListener('beforeunload', () => {
-            if (cameraStream) {
-                cameraStream.getTracks().forEach(track => track.stop());
-            }
-        });
-
-        // Initialize camera
-        initCamera();
-    </script>
+    <script src="{{ url_for('static', filename='register.js') }}"></script>
 </body>
 </html>
